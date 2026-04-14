@@ -1,0 +1,27 @@
+# Data
+pklot_data/
+*.csv
+*.pkl
+*.joblib
+
+# Notebook outputs / checkpoints
+.ipynb_checkpoints/
+*.png
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.env
+venv/
+.venv/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
