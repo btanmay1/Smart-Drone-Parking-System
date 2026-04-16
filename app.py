@@ -38,7 +38,12 @@ st.markdown("""
 /* ── Base ── */
 [data-testid="stAppViewContainer"] { background: #0d1117; color: #e6edf3; }
 [data-testid="stHeader"]           { background: #0d1117; }
-section[data-testid="stSidebar"]   { background: #161b22; border-right: 1px solid #30363d; }
+section[data-testid="stSidebar"]   { background: #161b22; border-right: 1px solid #30363d; color: #e6edf3 !important; }
+/* Force text colors in sidebar and markdown */
+[data-testid="stSidebar"] p, [data-testid="stSidebar"] h1, [data-testid="stSidebar"] h2, [data-testid="stSidebar"] h3, [data-testid="stSidebar"] td, [data-testid="stSidebar"] th, [data-testid="stSidebar"] li { color: #e6edf3 !important; }
+/* Force unselected tabs and body markdown to be readable */
+.stTabs [data-baseweb="tab"] p { color: #e6edf3 !important; }
+.stMarkdown p, .stMarkdown li, .stMarkdown td, .stMarkdown th { color: #e6edf3; }
 
 /* ── Metric cards ── */
 .kpi-row { display: flex; gap: 14px; margin-bottom: 20px; flex-wrap: wrap; }
