@@ -218,22 +218,14 @@ with st.sidebar:
     st.markdown("**Refresh Rate:** `Real-time`")
     
     st.markdown("<br><div class='glass-title'>LATEST AUDIT KPI</div>", unsafe_allow_html=True)
-    st.markdown("""
-    <div style='display: flex; flex-direction: column; gap: 10px;'>
-        <div style='background: #1e293b; padding: 10px 15px; border-radius: 6px; display: flex; justify-content: space-between;'>
-            <span style='color: #94a3b8; font-size: 13px;'>Accuracy</span>
-            <span style='color: #10b981; font-weight: 700;'>96.4%</span>
-        </div>
-        <div style='background: #1e293b; padding: 10px 15px; border-radius: 6px; display: flex; justify-content: space-between;'>
-            <span style='color: #94a3b8; font-size: 13px;'>F1 Score</span>
-            <span style='color: #10b981; font-weight: 700;'>0.961</span>
-        </div>
-        <div style='background: #1e293b; padding: 10px 15px; border-radius: 6px; display: flex; justify-content: space-between;'>
-            <span style='color: #94a3b8; font-size: 13px;'>Latency</span>
-            <span style='color: #38bdf8; font-weight: 700;'>1.2ms/slot</span>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
+    st.markdown("<div style='display: flex; flex-direction: column; gap: 10px;'>"
+                "<div style='background: #1e293b; padding: 10px 15px; border-radius: 6px; display: flex; justify-content: space-between;'>"
+                "<span style='color: #94a3b8; font-size: 13px;'>Accuracy</span><span style='color: #10b981; font-weight: 700;'>96.4%</span></div>"
+                "<div style='background: #1e293b; padding: 10px 15px; border-radius: 6px; display: flex; justify-content: space-between;'>"
+                "<span style='color: #94a3b8; font-size: 13px;'>F1 Score</span><span style='color: #10b981; font-weight: 700;'>0.961</span></div>"
+                "<div style='background: #1e293b; padding: 10px 15px; border-radius: 6px; display: flex; justify-content: space-between;'>"
+                "<span style='color: #94a3b8; font-size: 13px;'>Latency</span><span style='color: #38bdf8; font-weight: 700;'>1.2ms/slot</span></div>"
+                "</div>", unsafe_allow_html=True)
     
     st.markdown("<div style='position: absolute; bottom: 20px; font-size: 11px; color: #475569;'>v2.4.0 — Enterprise Edition</div>", unsafe_allow_html=True)
 
@@ -267,26 +259,12 @@ with tab1:
     free = total - occ
     util_pct = int((occ / total) * 100)
     
-    st.markdown(f"""
-    <div class="kpi-grid">
-        <div class="kpi-item">
-            <div class="kpi-h">Total Capacity</div>
-            <div class="kpi-v">{total} <span style='font-size:16px;color:#64748b;font-weight:400;'>slots</span></div>
-        </div>
-        <div class="kpi-item green">
-            <div class="kpi-h">Available Now</div>
-            <div class="kpi-v" style="color:#10b981;">{free} <span style='font-size:16px;color:#64748b;font-weight:400;'>slots</span></div>
-        </div>
-        <div class="kpi-item red">
-            <div class="kpi-h">Active utilization</div>
-            <div class="kpi-v" style="color:#ef4444;">{util_pct}%</div>
-        </div>
-        <div class="kpi-item purple">
-            <div class="kpi-h">Est. Revenue / Hr</div>
-            <div class="kpi-v" style="color:#8b5cf6;">${occ * 4}</div>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
+    st.markdown(f"<div class='kpi-grid'>"
+                f"<div class='kpi-item'><div class='kpi-h'>Total Capacity</div><div class='kpi-v'>{total} <span style='font-size:16px;color:#64748b;font-weight:400;'>slots</span></div></div>"
+                f"<div class='kpi-item green'><div class='kpi-h'>Available Now</div><div class='kpi-v' style='color:#10b981;'>{free} <span style='font-size:16px;color:#64748b;font-weight:400;'>slots</span></div></div>"
+                f"<div class='kpi-item red'><div class='kpi-h'>Active utilization</div><div class='kpi-v' style='color:#ef4444;'>{util_pct}%</div></div>"
+                f"<div class='kpi-item purple'><div class='kpi-h'>Est. Revenue / Hr</div><div class='kpi-v' style='color:#8b5cf6;'>${occ * 4}</div></div>"
+                f"</div>", unsafe_allow_html=True)
     
     # Layout: Grid | Term
     c1, c2 = st.columns([2.5, 1])
@@ -309,14 +287,8 @@ with tab1:
                 icon = "🚙" if is_occ else "A" + str((r*cols)+c+1)
                 color = "#9ca3af" if is_occ else "#10b981"
                 
-                grid_html += f"""
-                <div style='background: {bg}; border: 1px solid {border}; border-radius: 6px; 
-                            height: 60px; display: flex; align-items: center; justify-content: center;
-                            font-weight: 700; color: {color}; font-size: {"22px" if is_occ else "14px"};
-                            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.3); transition: 0.3s;'>
-                    {icon}
-                </div>
-                """
+                fsz = "22px" if is_occ else "14px"
+                grid_html += f"<div style='background: {bg}; border: 1px solid {border}; border-radius: 6px; height: 60px; display: flex; align-items: center; justify-content: center; font-weight: 700; color: {color}; font-size: {fsz}; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.3); transition: 0.3s;'>{icon}</div>"
         grid_html += "</div>"
         st.markdown(grid_html, unsafe_allow_html=True)
         
