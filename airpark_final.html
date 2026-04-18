@@ -1,0 +1,713 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AIRPARK — Drone Intelligence System</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#060d1a;--panel:#091422;--border:rgba(0,200,255,0.14);
+  --cyan:#00d2ff;--amber:#f5a623;--red:#ff4757;--green:#2ed573;--purple:#a29bfe;
+  --text:#c8e4f5;--muted:#3d6a8a;
+  --mono:'JetBrains Mono',monospace;--sans:'Space Grotesk',sans-serif;
+}
+html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(--text);font-family:var(--sans)}
+body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(0,200,255,0.025) 1px,transparent 1px),linear-gradient(90deg,rgba(0,200,255,0.025) 1px,transparent 1px);background-size:36px 36px;pointer-events:none;z-index:0}
+
+.app{position:relative;z-index:1;display:flex;flex-direction:column;height:100vh}
+
+/* NAV */
+nav{display:flex;align-items:center;justify-content:space-between;padding:0 20px;height:52px;border-bottom:1px solid var(--border);background:rgba(6,13,26,0.95);flex-shrink:0}
+.logo{display:flex;align-items:center;gap:10px}
+.logo-icon{width:28px;height:28px}
+.logo-name{font-family:var(--mono);font-size:16px;font-weight:700;letter-spacing:3px;color:#fff}
+.logo-tag{font-size:8px;letter-spacing:3px;color:var(--muted);text-transform:uppercase}
+.nav-stats{display:flex;align-items:center;gap:20px}
+.ns{text-align:center}
+.ns-val{font-family:var(--mono);font-size:18px;font-weight:700;line-height:1}
+.ns-val.c{color:var(--cyan)}
+.ns-val.a{color:var(--amber)}
+.ns-val.r{color:var(--red)}
+.ns-lbl{font-size:8px;letter-spacing:2px;color:var(--muted);text-transform:uppercase;margin-top:2px}
+.ndiv{width:1px;height:28px;background:var(--border)}
+.nav-right{display:flex;align-items:center;gap:10px}
+.chip{display:flex;align-items:center;gap:5px;padding:5px 10px;border:1px solid var(--border);border-radius:16px;font-family:var(--mono);font-size:10px}
+.dot{width:5px;height:5px;border-radius:50%}
+.dot.g{background:var(--green);animation:pd 2s infinite}
+.dot.r{background:var(--red);animation:pd 1s infinite}
+@keyframes pd{0%,100%{opacity:1}50%{opacity:.3}}
+.clk{font-family:var(--mono);font-size:12px;color:var(--cyan);letter-spacing:2px}
+
+/* LAYOUT */
+.main{display:grid;grid-template-columns:268px 1fr 268px;flex:1;overflow:hidden}
+.col{display:flex;flex-direction:column;overflow:hidden;border-right:1px solid rgba(0,200,255,0.07)}
+.col:last-child{border-right:none;border-left:1px solid rgba(0,200,255,0.07)}
+.pnl{padding:14px;border-bottom:1px solid rgba(0,200,255,0.07);flex-shrink:0}
+.pnl-title{font-size:8px;letter-spacing:3px;text-transform:uppercase;color:var(--muted);margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.pnl-title::after{content:'';flex:1;height:1px;background:rgba(0,200,255,0.07)}
+
+/* RING */
+.ring-wrap{position:relative;width:110px;height:110px;margin:0 auto 8px}
+.ring-wrap canvas{position:absolute;inset:0}
+.ring-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.ring-pct{font-family:var(--mono);font-size:24px;font-weight:700;color:#fff;line-height:1}
+.ring-sub{font-size:9px;color:var(--muted);letter-spacing:1px;margin-top:2px}
+.ring-caption{font-family:var(--mono);font-size:9px;color:var(--muted);text-align:center;margin-top:4px}
+
+/* ZONE ROWS */
+.zrow{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:5px;cursor:pointer;transition:background .2s;margin-bottom:6px}
+.zrow:hover{background:rgba(0,200,255,0.05)}
+.zrow.sel{background:rgba(0,200,255,0.08);outline:1px solid rgba(0,200,255,0.2)}
+.zid{font-family:var(--mono);font-size:10px;font-weight:700;color:var(--cyan);width:16px}
+.zbar-bg{flex:1;height:3px;background:rgba(255,255,255,0.06);border-radius:2px;overflow:hidden}
+.zbar-fill{height:100%;border-radius:2px;transition:width 1.4s cubic-bezier(.16,1,.3,1)}
+.zpct{font-family:var(--mono);font-size:9px;min-width:28px;text-align:right}
+.zslots{font-family:var(--mono);font-size:9px;color:var(--muted);min-width:40px;text-align:right}
+
+/* DRONES */
+.dgrid{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.dc{padding:9px;border-radius:7px;border:1px solid rgba(0,200,255,0.1);background:rgba(0,0,0,0.2);cursor:pointer;transition:all .2s}
+.dc:hover,.dc.act{border-color:rgba(0,200,255,0.4);background:rgba(0,200,255,0.05)}
+.dc.vio{border-color:rgba(255,71,87,0.4);animation:cp 1.5s infinite}
+@keyframes cp{0%,100%{border-color:rgba(255,71,87,0.2)}50%{border-color:rgba(255,71,87,.8)}}
+.did{font-family:var(--mono);font-size:9px;font-weight:700;color:#fff;letter-spacing:1px}
+.dst{font-size:8px;margin-top:3px}
+.dst.ok{color:var(--green)}.dst.ch{color:var(--amber)}.dst.vl{color:var(--red);font-weight:700;animation:bl 1s infinite}
+@keyframes bl{0%,100%{opacity:1}50%{opacity:0}}
+.dbatt{display:flex;align-items:center;gap:4px;margin-top:6px;font-family:var(--mono);font-size:8px;color:var(--muted)}
+.dbar{height:2px;flex:1;background:rgba(255,255,255,0.07);border-radius:1px;overflow:hidden}
+.dbar-f{height:100%;border-radius:1px}
+
+/* MAP */
+.map-col{display:flex;flex-direction:column;overflow:hidden}
+.map-hdr{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-bottom:1px solid rgba(0,200,255,0.07);flex-shrink:0}
+.map-title{font-size:9px;letter-spacing:3px;text-transform:uppercase;color:var(--muted)}
+.legend{display:flex;gap:14px}
+.leg{display:flex;align-items:center;gap:5px;font-size:9px;color:var(--muted)}
+.leg-box{width:10px;height:10px;border-radius:2px;border:1px solid}
+.map-area{flex:1;overflow:hidden;background:#030b15;position:relative}
+#map{width:100%;height:100%}
+.tt{position:absolute;background:rgba(4,11,22,0.97);border:1px solid var(--cyan);border-radius:7px;padding:9px 13px;font-size:10px;pointer-events:none;opacity:0;transition:opacity .15s;z-index:100}
+.tt h4{font-family:var(--mono);font-size:11px;color:var(--cyan);margin-bottom:5px;font-weight:700}
+.tt p{font-family:var(--mono);margin:2px 0;color:var(--muted)}.tt span{color:#fff}
+
+/* SCRUBBER */
+.scrub{padding:10px 16px;border-top:1px solid rgba(0,200,255,0.07);flex-shrink:0}
+.scrub-hdr{display:flex;justify-content:space-between;font-size:8px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+.mini-wrap{height:30px;margin-bottom:6px}
+input[type=range].tl{width:100%;-webkit-appearance:none;appearance:none;height:2px;background:rgba(255,255,255,0.08);border-radius:1px;outline:none}
+input[type=range].tl::-webkit-slider-thumb{-webkit-appearance:none;width:12px;height:12px;border-radius:50%;background:var(--cyan);cursor:pointer;box-shadow:0 0 6px var(--cyan)}
+.ticks{display:flex;justify-content:space-between;font-family:var(--mono);font-size:8px;color:var(--muted);margin-top:5px}
+
+/* RIGHT */
+.fc-wrap{height:150px;position:relative}
+.log-area{overflow:hidden;flex:1;display:flex;flex-direction:column}
+.log-entry{padding:9px 14px;border-bottom:1px solid rgba(0,200,255,0.05);animation:si .4s ease-out;position:relative;overflow:hidden}
+.log-entry::before{content:'';position:absolute;left:0;top:0;bottom:0;width:2px}
+.log-entry.h::before{background:var(--red)}.log-entry.m::before{background:var(--amber)}
+@keyframes si{from{transform:translateY(-100%);opacity:0}to{transform:translateY(0);opacity:1}}
+.lt{display:flex;justify-content:space-between;align-items:center;margin-bottom:3px}
+.ltime{font-family:var(--mono);font-size:9px;color:var(--muted)}
+.lsev{font-family:var(--mono);font-size:8px;padding:1px 5px;border-radius:2px;font-weight:700}
+.lsev.h{background:rgba(255,71,87,.13);color:var(--red);border:1px solid rgba(255,71,87,.3)}
+.lsev.m{background:rgba(245,166,35,.13);color:var(--amber);border:1px solid rgba(245,166,35,.3)}
+.lplate{font-family:var(--mono);font-size:11px;font-weight:700;color:#fff}
+.ltype{font-size:9px;color:var(--muted);margin-top:1px}
+.lzone{font-family:var(--mono);font-size:9px;color:var(--cyan)}
+
+/* METRICS */
+.mgrid{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.mc{padding:10px;border-radius:7px;border:1px solid rgba(0,200,255,0.08);background:rgba(0,0,0,0.1)}
+.mn{font-size:8px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:5px}
+.mv{font-family:var(--mono);font-size:17px;font-weight:700;color:var(--cyan);line-height:1}
+.mbar{height:2px;background:rgba(255,255,255,0.05);border-radius:1px;margin-top:6px;overflow:hidden}
+.mfill{height:100%;border-radius:1px;box-shadow:0 0 4px currentColor}
+.mtrend{font-size:8px;margin-top:3px;font-family:var(--mono)}
+
+/* BOTTOM */
+.bot{display:flex;align-items:center;gap:12px;padding:8px 20px;border-top:1px solid var(--border);background:rgba(6,13,26,.97);flex-shrink:0}
+.drop{flex:1;border:1px dashed rgba(0,200,255,.28);border-radius:7px;height:38px;display:flex;align-items:center;justify-content:center;gap:8px;font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);cursor:pointer;transition:all .2s;position:relative;overflow:hidden}
+.drop:hover{border-color:var(--cyan);color:var(--cyan);background:rgba(0,200,255,.03)}
+.aout{display:none;align-items:center;justify-content:space-around;width:100%;font-family:var(--mono);font-size:10px}
+.aval{color:var(--cyan);font-weight:700;font-size:14px}
+.radar{display:none;width:20px;height:20px;border-radius:50%;border:2px solid rgba(0,200,255,.2);border-top-color:var(--cyan);animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.btn{height:38px;padding:0 16px;border:1px solid;border-radius:7px;font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;cursor:pointer;display:flex;align-items:center;gap:5px;transition:all .2s;white-space:nowrap;flex-shrink:0}
+.btn-r{background:rgba(0,200,255,.07);color:var(--cyan);border-color:rgba(0,200,255,.35);animation:gp 2.5s infinite}
+@keyframes gp{0%,100%{box-shadow:0 0 0 0 rgba(0,200,255,0)}50%{box-shadow:0 0 10px rgba(0,200,255,.25)}}
+.btn-r:hover{background:var(--cyan);color:#000}
+.btn-e{background:rgba(245,166,35,.07);color:var(--amber);border-color:rgba(245,166,35,.35)}
+.btn-e:hover{background:var(--amber);color:#000}
+
+/* SCANLINES */
+.sl{position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,0,0,0.06) 3px,rgba(0,0,0,0.06) 4px);pointer-events:none;z-index:9999}
+</style>
+</head>
+<body>
+<div class="sl"></div>
+<div class="app">
+
+<!-- NAV -->
+<nav>
+  <div class="logo">
+    <svg class="logo-icon" viewBox="0 0 28 28" fill="none">
+      <polygon points="14,2 26,24 2,24" fill="none" stroke="#00d2ff" stroke-width="1.4"/>
+      <circle cx="14" cy="14" r="3.5" fill="#00d2ff"/>
+      <line x1="14" y1="10.5" x2="14" y2="2" stroke="#00d2ff" stroke-width="1" opacity=".5"/>
+      <line x1="11" y1="17" x2="4" y2="24" stroke="#00d2ff" stroke-width="1" opacity=".5"/>
+      <line x1="17" y1="17" x2="24" y2="24" stroke="#00d2ff" stroke-width="1" opacity=".5"/>
+      <circle cx="7" cy="7" r="1.8" fill="#00d2ff" opacity=".4"/>
+      <circle cx="21" cy="7" r="1.8" fill="#00d2ff" opacity=".4"/>
+      <circle cx="14" cy="25" r="1.8" fill="#00d2ff" opacity=".4"/>
+    </svg>
+    <div><div class="logo-name">AIRPARK</div><div class="logo-tag">Drone Intelligence System</div></div>
+  </div>
+  <div class="nav-stats">
+    <div class="ns"><div class="ns-val r" id="vcount">12</div><div class="ns-lbl">Violations Today</div></div>
+    <div class="ndiv"></div>
+    <div class="ns"><div class="ns-val">4</div><div class="ns-lbl">Drones Active</div></div>
+    <div class="ndiv"></div>
+    <div class="ns"><div class="ns-val a">73%</div><div class="ns-lbl">Occupancy</div></div>
+    <div class="ndiv"></div>
+    <div class="ns"><div class="ns-val c" id="scount">238</div><div class="ns-lbl">Slots Occupied</div></div>
+    <div class="ndiv"></div>
+    <div class="ns"><div class="ns-val" style="color:var(--green)" id="fcount">88</div><div class="ns-lbl">Slots Free</div></div>
+  </div>
+  <div class="nav-right">
+    <div class="chip"><div class="dot g"></div>Systems OK</div>
+    <div class="chip"><div class="dot r"></div>2 Alerts</div>
+    <div class="clk" id="clk">--:--:--</div>
+  </div>
+</nav>
+
+<!-- MAIN -->
+<div class="main">
+
+<!-- LEFT -->
+<div class="col">
+  <div class="pnl">
+    <div class="pnl-title">Occupancy Overview</div>
+    <div class="ring-wrap">
+      <canvas id="ring" width="110" height="110"></canvas>
+      <div class="ring-center">
+        <div class="ring-pct">73%</div>
+        <div class="ring-sub">Occupied</div>
+      </div>
+    </div>
+    <div class="ring-caption">238 occupied · 88 free · 326 total</div>
+  </div>
+
+  <div class="pnl">
+    <div class="pnl-title">Zone Breakdown</div>
+    <div id="zlist"></div>
+  </div>
+
+  <div class="pnl" style="flex:1;overflow:hidden;display:flex;flex-direction:column">
+    <div class="pnl-title">Live Drone Fleet</div>
+    <div class="dgrid" id="dgrid"></div>
+  </div>
+</div>
+
+<!-- CENTER MAP -->
+<div class="col map-col">
+  <div class="map-hdr">
+    <div class="map-title">Amritsar Sector 7 — Live Aerial View</div>
+    <div class="legend">
+      <div class="leg"><div class="leg-box" style="background:rgba(46,213,115,.2);border-color:rgba(46,213,115,.7)"></div>Free</div>
+      <div class="leg"><div class="leg-box" style="background:rgba(255,71,87,.15);border-color:rgba(255,71,87,.5)"></div>Occupied</div>
+      <div class="leg"><div class="leg-box" style="background:rgba(245,166,35,.18);border-color:rgba(245,166,35,.7)"></div>Reserved</div>
+      <div class="leg"><div class="leg-box" style="background:rgba(255,71,87,.5);border-color:#ff4757"></div>Violation</div>
+    </div>
+  </div>
+
+  <div class="map-area">
+    <!-- THE PARKING LOT MAP — drawn as SVG, slots added by JS -->
+    <svg id="map" viewBox="0 0 900 520" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg">
+      <!-- Background -->
+      <rect width="900" height="520" fill="#030b15"/>
+
+      <!-- Drive lanes (darker tarmac strips between slot rows) -->
+      <!-- Between zone A top/bottom rows -->
+      <rect x="0" y="118" width="900" height="30" fill="#050f1c"/>
+      <!-- Between zone A bottom and zone B top -->
+      <rect x="0" y="234" width="900" height="30" fill="#050f1c"/>
+      <!-- Between zone B bottom and zone C top -->
+      <rect x="0" y="350" width="900" height="30" fill="#050f1c"/>
+      <!-- Between zone C bottom and zone D top -->
+      <rect x="0" y="466" width="900" height="54" fill="#050f1c"/>
+
+      <!-- Lane centre dashed lines -->
+      <line x1="0" y1="133" x2="900" y2="133" stroke="rgba(255,230,0,0.18)" stroke-width="1.5" stroke-dasharray="22 16"/>
+      <line x1="0" y1="249" x2="900" y2="249" stroke="rgba(255,230,0,0.18)" stroke-width="1.5" stroke-dasharray="22 16"/>
+      <line x1="0" y1="365" x2="900" y2="365" stroke="rgba(255,230,0,0.18)" stroke-width="1.5" stroke-dasharray="22 16"/>
+      <line x1="0" y1="481" x2="900" y2="481" stroke="rgba(255,230,0,0.18)" stroke-width="1.5" stroke-dasharray="22 16"/>
+
+      <!-- Zone ID labels (big faint) -->
+      <text font-family="JetBrains Mono" font-size="10" font-weight="700" letter-spacing="2" fill="rgba(0,200,255,0.3)" x="8" y="72">A</text>
+      <text font-family="JetBrains Mono" font-size="10" font-weight="700" letter-spacing="2" fill="rgba(0,200,255,0.3)" x="8" y="188">B</text>
+      <text font-family="JetBrains Mono" font-size="10" font-weight="700" letter-spacing="2" fill="rgba(0,200,255,0.3)" x="8" y="304">C</text>
+      <text font-family="JetBrains Mono" font-size="10" font-weight="700" letter-spacing="2" fill="rgba(0,200,255,0.3)" x="8" y="420">D</text>
+
+      <!-- Slot groups + cars + drones injected here -->
+      <g id="gslots"></g>
+      <g id="galerts"></g>
+      <g id="gcars"></g>
+      <g id="gdrones"></g>
+    </svg>
+    <div class="tt" id="tt">
+      <h4 id="tt-id">SLOT —</h4>
+      <p>Status: <span id="tt-s">—</span></p>
+      <p>Duration: <span id="tt-d">—</span></p>
+      <p>Zone: <span id="tt-z">—</span></p>
+    </div>
+  </div>
+
+  <div class="scrub">
+    <div class="scrub-hdr"><span>▶ Historical Playback</span><span id="st">14:00</span></div>
+    <div class="mini-wrap"><canvas id="mini"></canvas></div>
+    <input type="range" class="tl" min="0" max="96" value="56" oninput="scrub(this.value)">
+    <div class="ticks"><span>06:00</span><span>09:00</span><span>12:00</span><span>15:00</span><span>18:00</span><span>21:00</span></div>
+  </div>
+</div>
+
+<!-- RIGHT -->
+<div class="col">
+  <div class="pnl" style="flex-shrink:0">
+    <div class="pnl-title">AI Demand Forecast — Next 6h</div>
+    <div class="fc-wrap"><canvas id="fc"></canvas></div>
+  </div>
+
+  <div class="pnl" style="flex:1;overflow:hidden;display:flex;flex-direction:column;padding:0">
+    <div style="padding:14px 14px 0"><div class="pnl-title">Live Violation Feed</div></div>
+    <div class="log-area" id="log"></div>
+  </div>
+
+  <div class="pnl" style="flex-shrink:0">
+    <div class="pnl-title">Model Confidence</div>
+    <div class="mgrid">
+      <div class="mc"><div class="mn">MobileNetV2</div><div class="mv" id="m1">—</div><div class="mbar"><div class="mfill" id="mb1" style="width:0%;background:var(--cyan);color:var(--cyan)"></div></div><div class="mtrend" style="color:var(--cyan)">↑ Accuracy</div></div>
+      <div class="mc"><div class="mn">XGBoost F1</div><div class="mv" id="m2" style="color:var(--purple)">—</div><div class="mbar"><div class="mfill" id="mb2" style="width:0%;background:var(--purple);color:var(--purple)"></div></div><div class="mtrend" style="color:var(--purple)">↑ F1 Score</div></div>
+      <div class="mc"><div class="mn">LSTM MAE</div><div class="mv" id="m3" style="color:var(--green)">—</div><div class="mbar"><div class="mfill" id="mb3" style="width:0%;background:var(--green);color:var(--green)"></div></div><div class="mtrend" style="color:var(--green)">↓ Error</div></div>
+      <div class="mc"><div class="mn">YOLOv8 mAP</div><div class="mv" id="m4" style="color:var(--amber)">—</div><div class="mbar"><div class="mfill" id="mb4" style="width:0%;background:var(--amber);color:var(--amber)"></div></div><div class="mtrend" style="color:var(--amber)">↑ Detection</div></div>
+    </div>
+  </div>
+</div>
+
+</div><!-- /main -->
+
+<!-- BOTTOM -->
+<div class="bot">
+  <div class="drop" id="dropz" onclick="simAnalysis()" ondragover="event.preventDefault()" ondrop="event.preventDefault();simAnalysis()">
+    <div id="dtxt" style="display:flex;align-items:center;gap:8px">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      DROP DRONE IMAGE BATCH — or click to upload
+    </div>
+    <div class="radar" id="rdr"></div>
+    <div class="aout" id="ares">
+      Slots: <span class="aval" data-t="42">0</span> &nbsp;|&nbsp;
+      Occupied: <span class="aval" data-t="29">0</span> &nbsp;|&nbsp;
+      Violations: <span class="aval" data-t="3">0</span> &nbsp;|&nbsp;
+      Occupancy: <span class="aval" data-t="69">0</span>%
+    </div>
+  </div>
+  <button class="btn btn-r" onclick="simAnalysis()">▶ Run AI Analysis</button>
+  <button class="btn btn-e">↓ Export PDF Report</button>
+</div>
+
+</div><!-- /app -->
+
+<script>
+// ─── CLOCK ─────────────────────────────────────────────────────────────────
+function tick(){
+  const n=new Date();
+  document.getElementById('clk').textContent=[n.getHours(),n.getMinutes(),n.getSeconds()].map(v=>String(v).padStart(2,'0')).join(':');
+}
+setInterval(tick,1000);tick();
+
+// ─── COUNTER ANIMATION ─────────────────────────────────────────────────────
+function countUp(el,to,ms=1100){
+  let s=null,from=parseFloat(el.textContent)||0;
+  (function step(t){if(!s)s=t;const p=Math.min((t-s)/ms,1),e=1-Math.pow(1-p,4);
+    el.textContent=Math.round(from+(to-from)*e);if(p<1)requestAnimationFrame(step);})(0);
+  requestAnimationFrame(function step(t){if(!s)s=t;const p=Math.min((t-s)/ms,1),e=1-Math.pow(1-p,4);
+    el.textContent=Math.round(from+(to-from)*e);if(p<1)requestAnimationFrame(step);});
+}
+function countUpStr(el,str,ms=1100){setTimeout(()=>el.textContent=str,ms);}
+
+// ─── OCCUPANCY RING ────────────────────────────────────────────────────────
+new Chart(document.getElementById('ring').getContext('2d'),{
+  type:'doughnut',
+  data:{datasets:[{data:[73,27],backgroundColor:['rgba(0,210,255,.85)','rgba(255,255,255,.04)'],borderWidth:0}]},
+  options:{cutout:'80%',plugins:{legend:{display:false},tooltip:{enabled:false}},animation:{duration:1400,easing:'easeOutQuart'}}
+});
+
+// ─── ZONE DATA ─────────────────────────────────────────────────────────────
+const ZONES=[
+  {id:'A',pct:82,slots:'68/82',color:'#ff4757',viol:true},
+  {id:'B',pct:71,slots:'58/82',color:'#f5a623'},
+  {id:'C',pct:65,slots:'53/82',color:'#f5a623'},
+  {id:'D',pct:74,slots:'61/82',color:'#ff4757'},
+];
+const zlist=document.getElementById('zlist');
+ZONES.forEach(z=>{
+  const d=document.createElement('div');
+  d.className='zrow'; d.id='zr-'+z.id;
+  d.innerHTML=`<span class="zid">${z.id}</span>
+    <div class="zbar-bg"><div class="zbar-fill" style="background:${z.color};width:0" data-w="${z.pct}%"></div></div>
+    <span class="zslots">${z.slots}</span>
+    <span class="zpct" style="color:${z.color}">${z.pct}%</span>
+    ${z.viol?'<span style="color:var(--red);font-size:8px;animation:bl 1s infinite">⚠</span>':''}`;
+  d.onclick=()=>filterZone(z.id);
+  zlist.appendChild(d);
+});
+setTimeout(()=>document.querySelectorAll('.zbar-fill').forEach(b=>b.style.width=b.dataset.w),200);
+
+// ─── DRONE CARDS ───────────────────────────────────────────────────────────
+const DRONES=[
+  {id:'DRONE-01',alt:'52m',batt:88,cls:'ok',lbl:'ACTIVE',c:'#2ed573'},
+  {id:'DRONE-02',alt:'48m',batt:61,cls:'vl',lbl:'⚠ VIOLATION',c:'#ff4757'},
+  {id:'DRONE-03',alt:'55m',batt:95,cls:'ok',lbl:'ACTIVE',c:'#2ed573'},
+  {id:'DRONE-04',alt:'—',  batt:32,cls:'ch',lbl:'CHARGING',c:'#f5a623'},
+];
+const dgrid=document.getElementById('dgrid');
+DRONES.forEach(d=>{
+  const c=document.createElement('div');
+  c.className='dc'+(d.cls==='vl'?' vio':'');
+  c.innerHTML=`<div class="did">${d.id}</div>
+    <div class="dst ${d.cls}">${d.lbl}</div>
+    <div class="dbatt"><span>${d.batt}%</span><div class="dbar"><div class="dbar-f" style="width:${d.batt}%;background:${d.c}"></div></div><span>${d.alt}</span></div>`;
+  c.onclick=()=>{document.querySelectorAll('.dc').forEach(x=>x.classList.remove('act'));c.classList.add('act');};
+  dgrid.appendChild(c);
+});
+
+// ─── FORECAST CHART ────────────────────────────────────────────────────────
+new Chart(document.getElementById('fc').getContext('2d'),{
+  type:'line',
+  data:{
+    labels:['Now','1h','2h','3h','4h','5h','6h'],
+    datasets:[
+      {data:[73,78,82,79,71,65,60],borderColor:'rgba(0,210,255,.9)',backgroundColor:'rgba(0,210,255,.07)',borderWidth:2,fill:true,tension:.4,pointRadius:3,pointBackgroundColor:'rgba(0,210,255,.9)'},
+      {data:[null,null,73,75,68,62,57],borderColor:'rgba(162,155,254,.5)',backgroundColor:'transparent',borderWidth:1.5,borderDash:[4,4],fill:false,tension:.4,pointRadius:2,pointBackgroundColor:'rgba(162,155,254,.7)'}
+    ]
+  },
+  options:{responsive:true,maintainAspectRatio:false,animation:{duration:900},plugins:{legend:{display:false}},
+    scales:{x:{grid:{color:'rgba(255,255,255,.03)'},ticks:{color:'rgba(61,106,138,.9)',font:{family:'JetBrains Mono',size:8}}},
+            y:{min:40,max:100,grid:{color:'rgba(255,255,255,.03)'},ticks:{color:'rgba(61,106,138,.9)',font:{family:'JetBrains Mono',size:8},callback:v=>v+'%'}}}}
+});
+
+// ─── MINI TIMELINE CHART ───────────────────────────────────────────────────
+const miniCtx=document.getElementById('mini').getContext('2d');
+const occ=Array.from({length:97},(_,i)=>Math.max(15,Math.min(95,Math.sin((6+i/4-9)*Math.PI/12)*32+52+Math.random()*8-4)));
+new Chart(miniCtx,{type:'line',data:{labels:occ.map((_,i)=>i),datasets:[{data:occ,borderColor:'rgba(0,210,255,.5)',backgroundColor:'rgba(0,210,255,.06)',borderWidth:1.5,fill:true,tension:.4,pointRadius:0}]},
+  options:{responsive:true,maintainAspectRatio:false,animation:false,plugins:{legend:{display:false},tooltip:{enabled:false}},scales:{x:{display:false},y:{display:false,min:0,max:100}}}});
+function scrub(v){const h=Math.floor(6+v/4),m=Math.round((6+v/4-h)*60);document.getElementById('st').textContent=`${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;}
+
+// ─── VIOLATION LOG ─────────────────────────────────────────────────────────
+const log=document.getElementById('log');
+const VTYPES=['No Parking Zone','Overtime (>2h)','Double Parked','Disabled Bay Misuse','Fire Lane Block'];
+const PLATES=['PB10-XX42','PB23-XX17','PB08-XX91','PB31-XX55','PB14-XX73','PB07-XX28','PB19-XX64'];
+function addLog(init=false){
+  const sev=Math.random()>.65?'h':'m';
+  const z=['A','B','C','D'][Math.floor(Math.random()*4)];
+  const plate=PLATES[Math.floor(Math.random()*PLATES.length)];
+  const type=VTYPES[Math.floor(Math.random()*VTYPES.length)];
+  const now=new Date(),t=`${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`;
+  const e=document.createElement('div');
+  e.className=`log-entry ${sev}`;
+  e.innerHTML=`<div class="lt"><span class="ltime">${t}</span><span class="lsev ${sev}">${sev==='h'?'HIGH':'MED'}</span></div>
+    <div style="display:flex;justify-content:space-between;align-items:center"><span class="lplate">${plate}</span><span class="lzone">ZONE ${z}</span></div>
+    <div class="ltype">${type}</div>`;
+  log.prepend(e);
+  if(log.children.length>7)log.removeChild(log.lastChild);
+  if(!init){const vc=document.getElementById('vcount');countUp(vc,parseInt(vc.textContent)+1,300);}
+}
+for(let i=0;i<6;i++)addLog(true);
+setInterval(addLog,4500);
+
+// ─── MODEL METRICS ─────────────────────────────────────────────────────────
+const METRICS=[{id:'m1',bar:'mb1',label:'98.1%',w:98},{id:'m2',bar:'mb2',label:'94.0%',w:94},{id:'m3',bar:'mb3',label:'0.04',w:96},{id:'m4',bar:'mb4',label:'91.3%',w:91}];
+METRICS.forEach((m,i)=>setTimeout(()=>{
+  let s=null;
+  (function step(t){if(!s)s=t;const p=Math.min((t-s)/1100,1),e=1-Math.pow(1-p,4);
+    document.getElementById(m.bar).style.width=Math.round(m.w*e)+'%';
+    if(p<1)requestAnimationFrame(step);else document.getElementById(m.id).textContent=m.label;
+  })(performance.now());
+  requestAnimationFrame(function step(t){if(!s)s=t;const p=Math.min((t-s)/1100,1),e=1-Math.pow(1-p,4);
+    document.getElementById(m.bar).style.width=Math.round(m.w*e)+'%';
+    if(p<1)requestAnimationFrame(step);else document.getElementById(m.id).textContent=m.label;});
+},i*120));
+
+// ─── ANALYSIS SIMULATION ───────────────────────────────────────────────────
+function simAnalysis(){
+  document.getElementById('dtxt').style.display='none';
+  document.getElementById('ares').style.display='none';
+  document.getElementById('rdr').style.display='block';
+  setTimeout(()=>{
+    document.getElementById('rdr').style.display='none';
+    const ar=document.getElementById('ares');
+    ar.style.display='flex';
+    ar.querySelectorAll('.aval').forEach(el=>{
+      const to=parseInt(el.dataset.t);let s=null;
+      requestAnimationFrame(function step(t){if(!s)s=t;const p=Math.min((t-s)/900,1),e=1-Math.pow(1-p,3);
+        el.textContent=Math.round(to*e);if(p<1)requestAnimationFrame(step);});
+    });
+  },2000);
+}
+
+// ─── NAV COUNTER ANIMATIONS ────────────────────────────────────────────────
+setTimeout(()=>{
+  const sc=document.getElementById('scount');let s=null;
+  requestAnimationFrame(function step(t){if(!s)s=t;const p=Math.min((t-s)/1300,1),e=1-Math.pow(1-p,4);
+    sc.textContent=Math.round(238*e);if(p<1)requestAnimationFrame(step);});
+},100);
+
+// ─── PARKING MAP ───────────────────────────────────────────────────────────
+const NS='http://www.w3.org/2000/svg';
+const gslots=document.getElementById('gslots');
+const galerts=document.getElementById('galerts');
+const gcars=document.getElementById('gcars');
+const gdrones=document.getElementById('gdrones');
+const svgEl=document.getElementById('map');
+const tt=document.getElementById('tt');
+
+// Slot dimensions
+const SW=56, SH=52, SGAP=3;
+// 4 zones, each zone has 2 rows of slots, separated by a drive lane
+// Zone A: top-row y=4, bottom-row y=66 (face each other across lane at y=118..148)
+// Zone B: top y=152, bot y=182  — lane y=234..264
+// Zone C: top y=268, bot y=298  — lane y=350..380
+// Zone D: top y=384, bot y=414  — bottom edge y=466
+const ZONE_CONFIG=[
+  {z:'A', y1:4,   y2:66},
+  {z:'B', y1:152, y2:182},
+  {z:'C', y1:268, y2:298},
+  {z:'D', y1:384, y2:414},
+];
+const N_SLOTS=14; // slots per row
+const START_X=24;
+
+const allSlots=[];
+let sNum=1;
+
+const ST={
+  free:{fill:'rgba(46,213,115,0.16)',stroke:'rgba(46,213,115,0.75)',sw:'0.8'},
+  occ: {fill:'rgba(255,71,87,0.14)', stroke:'rgba(255,71,87,0.55)', sw:'0.8'},
+  res: {fill:'rgba(245,166,35,0.18)',stroke:'rgba(245,166,35,0.72)',sw:'0.8'},
+  viol:{fill:'rgba(255,71,87,0.42)', stroke:'#ff4757',              sw:'1.5'},
+};
+
+function mkSlot(x, y, zone){
+  const r=Math.random();
+  let status='free', statTxt='Available', dur='—';
+  if(r>.92){status='viol';statTxt='VIOLATION';dur='22m';}
+  else if(r>.83){status='res';statTxt='Reserved';}
+  else if(r>.30){status='occ';statTxt='Occupied';dur=`${Math.floor(Math.random()*3+1)}h ${Math.floor(Math.random()*60)}m`;}
+
+  const st=ST[status];
+  const sid=`${zone}-${String(sNum).padStart(2,'0')}`;
+  sNum++;
+
+  const g=document.createElementNS(NS,'g');
+  g.style.cursor='pointer';
+
+  // Slot rectangle
+  const rect=document.createElementNS(NS,'rect');
+  rect.setAttribute('x',x); rect.setAttribute('y',y);
+  rect.setAttribute('width',SW); rect.setAttribute('height',SH);
+  rect.setAttribute('rx','3');
+  rect.setAttribute('fill',st.fill);
+  rect.setAttribute('stroke',st.stroke);
+  rect.setAttribute('stroke-width',st.sw);
+  if(status==='viol'){
+    const an=document.createElementNS(NS,'animate');
+    an.setAttribute('attributeName','fill');
+    an.setAttribute('values','rgba(255,71,87,0.28);rgba(255,71,87,0.55);rgba(255,71,87,0.28)');
+    an.setAttribute('dur','1.2s'); an.setAttribute('repeatCount','indefinite');
+    rect.appendChild(an);
+  }
+  g.appendChild(rect);
+
+  // Car body (if occupied or violation)
+  if(status==='occ'||status==='viol'){
+    const car=document.createElementNS(NS,'rect');
+    car.setAttribute('x',x+7); car.setAttribute('y',y+8);
+    car.setAttribute('width',SW-14); car.setAttribute('height',SH-16);
+    car.setAttribute('rx','4');
+    car.setAttribute('fill',status==='viol'?'rgba(255,71,87,0.45)':'rgba(140,175,210,0.22)');
+    car.setAttribute('stroke',status==='viol'?'rgba(255,71,87,0.8)':'rgba(140,175,210,0.4)');
+    car.setAttribute('stroke-width','0.7');
+    g.appendChild(car);
+    // windscreen
+    const ws=document.createElementNS(NS,'rect');
+    ws.setAttribute('x',x+11); ws.setAttribute('y',y+11);
+    ws.setAttribute('width',SW-22); ws.setAttribute('height','10');
+    ws.setAttribute('rx','2');
+    ws.setAttribute('fill',status==='viol'?'rgba(255,71,87,0.25)':'rgba(180,220,255,0.18)');
+    ws.setAttribute('stroke','none');
+    g.appendChild(ws);
+  }
+
+  // Status label inside slot
+  const cx=x+SW/2, cy=y+SH/2;
+  if(status==='free'){
+    const t=document.createElementNS(NS,'text');
+    t.setAttribute('x',cx); t.setAttribute('y',cy+5);
+    t.setAttribute('text-anchor','middle');
+    t.setAttribute('font-family','JetBrains Mono'); t.setAttribute('font-size','17');
+    t.setAttribute('font-weight','700'); t.setAttribute('fill','rgba(46,213,115,0.8)');
+    t.textContent='P'; g.appendChild(t);
+  } else if(status==='res'){
+    const t=document.createElementNS(NS,'text');
+    t.setAttribute('x',cx); t.setAttribute('y',cy+4);
+    t.setAttribute('text-anchor','middle');
+    t.setAttribute('font-family','JetBrains Mono'); t.setAttribute('font-size','9');
+    t.setAttribute('font-weight','700'); t.setAttribute('fill','rgba(245,166,35,0.9)');
+    t.textContent='RES'; g.appendChild(t);
+  } else if(status==='viol'){
+    const t=document.createElementNS(NS,'text');
+    t.setAttribute('x',cx); t.setAttribute('y',cy+4);
+    t.setAttribute('text-anchor','middle');
+    t.setAttribute('font-family','JetBrains Mono'); t.setAttribute('font-size','9');
+    t.setAttribute('font-weight','700'); t.setAttribute('fill','#ff4757');
+    t.textContent='!VIO';
+    const an=document.createElementNS(NS,'animate');
+    an.setAttribute('attributeName','opacity'); an.setAttribute('values','1;0.2;1');
+    an.setAttribute('dur','1s'); an.setAttribute('repeatCount','indefinite');
+    t.appendChild(an); g.appendChild(t);
+  }
+
+  // Slot ID number (small, top of slot)
+  const nt=document.createElementNS(NS,'text');
+  nt.setAttribute('x',cx); nt.setAttribute('y',y+8);
+  nt.setAttribute('text-anchor','middle');
+  nt.setAttribute('font-family','JetBrains Mono'); nt.setAttribute('font-size','6');
+  nt.setAttribute('fill','rgba(255,255,255,0.28)');
+  nt.textContent=sid; g.appendChild(nt);
+
+  // Hover
+  g.addEventListener('mouseenter',e=>{
+    document.getElementById('tt-id').textContent='SLOT '+sid;
+    document.getElementById('tt-s').textContent=statTxt;
+    document.getElementById('tt-d').textContent=dur;
+    document.getElementById('tt-z').textContent='Zone '+zone;
+    rect.setAttribute('stroke-width','2');
+    const sr=svgEl.getBoundingClientRect();
+    const px=((e.clientX-sr.left)/sr.width)*900;
+    const py=((e.clientY-sr.top)/sr.height)*520;
+    tt.style.left=Math.min(px+12,720)+'px';
+    tt.style.top=Math.min(py+10,440)+'px';
+    tt.style.opacity=1;
+  });
+  g.addEventListener('mouseleave',()=>{
+    tt.style.opacity=0;
+    rect.setAttribute('stroke-width',st.sw);
+  });
+  g.addEventListener('click',()=>filterZone(zone));
+
+  gslots.appendChild(g);
+  allSlots.push({g,rect,status,zone,sid,x,y,sw:SW,sh:SH});
+}
+
+// Generate all slots
+ZONE_CONFIG.forEach(zc=>{
+  for(let c=0;c<N_SLOTS;c++){
+    const x=START_X+c*(SW+SGAP);
+    mkSlot(x, zc.y1, zc.z);
+    mkSlot(x, zc.y2, zc.z);
+  }
+});
+
+// Violation pulse rings
+let vc2=0;
+allSlots.filter(s=>s.status==='viol').forEach(s=>{
+  if(vc2>=4)return;
+  const cx=s.x+s.sw/2, cy=s.y+s.sh/2;
+  for(let i=0;i<2;i++){
+    const c=document.createElementNS(NS,'circle');
+    c.setAttribute('cx',cx); c.setAttribute('cy',cy);
+    c.setAttribute('fill','none'); c.setAttribute('stroke','#ff4757'); c.setAttribute('stroke-width','1');
+    const ar=document.createElementNS(NS,'animate');
+    ar.setAttribute('attributeName','r'); ar.setAttribute('from','4'); ar.setAttribute('to','36');
+    ar.setAttribute('dur',(1.3+i*.5)+'s'); ar.setAttribute('repeatCount','indefinite'); ar.setAttribute('begin',(i*.65)+'s');
+    const ao=document.createElementNS(NS,'animate');
+    ao.setAttribute('attributeName','opacity'); ao.setAttribute('from','.7'); ao.setAttribute('to','0');
+    ao.setAttribute('dur',(1.3+i*.5)+'s'); ao.setAttribute('repeatCount','indefinite'); ao.setAttribute('begin',(i*.65)+'s');
+    c.appendChild(ar); c.appendChild(ao); galerts.appendChild(c);
+  }
+  vc2++;
+});
+
+// Zone filter
+function filterZone(z){
+  document.querySelectorAll('.zrow').forEach(r=>r.classList.remove('sel'));
+  const row=document.getElementById('zr-'+z);
+  if(row)row.classList.add('sel');
+  allSlots.forEach(s=>s.g.style.opacity=s.zone===z?'1':'0.12');
+  setTimeout(()=>{
+    allSlots.forEach(s=>s.g.style.opacity='1');
+    document.querySelectorAll('.zrow').forEach(r=>r.classList.remove('sel'));
+  },3500);
+}
+
+// Animated cars in drive lanes
+[[133,16,false],[249,20,true],[365,18,false],[481,14,true]].forEach(([ly,dur,rev])=>{
+  const g=document.createElementNS(NS,'g');
+  const body=document.createElementNS(NS,'rect');
+  body.setAttribute('x',rev?'-32':'-4'); body.setAttribute('y','-8');
+  body.setAttribute('width','36'); body.setAttribute('height','18'); body.setAttribute('rx','5');
+  body.setAttribute('fill','rgba(155,185,215,0.55)'); body.setAttribute('stroke','rgba(255,255,255,0.08)'); body.setAttribute('stroke-width','0.5');
+  const cabin=document.createElementNS(NS,'rect');
+  const cabinX=rev?'-24':'-0';
+  cabin.setAttribute('x','-8'); cabin.setAttribute('y','-16');
+  cabin.setAttribute('width','18'); cabin.setAttribute('height','9'); cabin.setAttribute('rx','3');
+  cabin.setAttribute('fill','rgba(100,145,190,0.4)');
+  g.appendChild(body); g.appendChild(cabin);
+  const mo=document.createElementNS(NS,'animateMotion');
+  mo.setAttribute('path',rev?`M 900,${ly} L 0,${ly}`:`M 0,${ly} L 900,${ly}`);
+  mo.setAttribute('dur',dur+'s'); mo.setAttribute('repeatCount','indefinite');
+  if(rev) mo.setAttribute('rotate','180');
+  g.appendChild(mo); gcars.appendChild(g);
+});
+
+// Drones
+[
+  {path:"M 80,30 Q 450,260 820,30 Q 900,130 820,490 Q 450,340 80,490 Q 0,340 80,30", dur:26},
+  {path:"M 820,250 Q 550,60 220,250 Q 60,380 300,480 Q 550,520 760,440 Q 870,380 820,250", dur:34},
+].forEach(({path,dur})=>{
+  const g=document.createElementNS(NS,'g');
+  // arms + props
+  [[-1,-1],[1,-1],[1,1],[-1,1]].forEach(([ax,ay])=>{
+    const arm=document.createElementNS(NS,'line');
+    arm.setAttribute('x1','0'); arm.setAttribute('y1','0');
+    arm.setAttribute('x2',String(ax*11)); arm.setAttribute('y2',String(ay*11));
+    arm.setAttribute('stroke','rgba(0,210,255,0.65)'); arm.setAttribute('stroke-width','1.3');
+    const prop=document.createElementNS(NS,'ellipse');
+    prop.setAttribute('cx',String(ax*11)); prop.setAttribute('cy',String(ay*11));
+    prop.setAttribute('rx','5'); prop.setAttribute('ry','2.5');
+    prop.setAttribute('fill','none'); prop.setAttribute('stroke','rgba(0,210,255,0.45)'); prop.setAttribute('stroke-width','1');
+    g.appendChild(arm); g.appendChild(prop);
+  });
+  // body
+  const body=document.createElementNS(NS,'rect');
+  body.setAttribute('x','-5'); body.setAttribute('y','-5');
+  body.setAttribute('width','10'); body.setAttribute('height','10'); body.setAttribute('rx','2');
+  body.setAttribute('fill','#00d2ff');
+  // glow pulse
+  const glow=document.createElementNS(NS,'circle');
+  glow.setAttribute('r','7'); glow.setAttribute('fill','rgba(0,210,255,0.12)');
+  const ga=document.createElementNS(NS,'animate');
+  ga.setAttribute('attributeName','r'); ga.setAttribute('values','5;13;5');
+  ga.setAttribute('dur','2s'); ga.setAttribute('repeatCount','indefinite');
+  glow.appendChild(ga);
+  g.appendChild(glow); g.appendChild(body);
+  const mo=document.createElementNS(NS,'animateMotion');
+  mo.setAttribute('path',path); mo.setAttribute('dur',dur+'s');
+  mo.setAttribute('repeatCount','indefinite'); mo.setAttribute('rotate','auto');
+  g.appendChild(mo); gdrones.appendChild(g);
+});
+</script>
+</body>
+</html>
